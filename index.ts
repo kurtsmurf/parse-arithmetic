@@ -1,18 +1,14 @@
 // @ts-ignore
 import deepequal from "https://cdn.skypack.dev/deepequal";
 
-// TYPES
-
 namespace Lexing {
   type TokenType = "reference" | "operator" | "number" | "parenthetical";
   type Token = { type: TokenType; value: string };
-  type Error = "ERROR";
 
-  type MatchFn = (input: string) => Token | Error;
-  type MunchFn = (input: string) => [Token, string] | Error;
-  type LexFn = (input: string) => Token[] | Error;
+  type MatchFn = (input: string) => Token;
+  type MunchFn = (input: string) => [Token, string];
+  type LexFn = (input: string) => Token[];
 
-  // IMPLEMENTATION
   const matchers: [TokenType, RegExp][] = [
     ["reference", /^([A-Z])\1*[1-9][0-9]*/],
     ["number", /^\d+/],
@@ -25,13 +21,12 @@ namespace Lexing {
       const value = regExp.exec(input)?.[0];
       if (value) return { type, value };
     }
-    return "ERROR";
+    throw "ERROR";
   };
 
   const munch: MunchFn = (input) => {
     const trimmed = input.trim();
     const matchResult = match(trimmed);
-    if (matchResult === "ERROR") return matchResult;
     const rest = trimmed.slice(matchResult.value.length);
     const token = matchResult.type === "parenthetical"
       // remove parens from value
@@ -45,7 +40,6 @@ namespace Lexing {
     let result = [];
     while (remaining.length > 0) {
       const munchResult = munch(remaining);
-      if (munchResult === "ERROR") return munchResult;
       const [head, rest] = munchResult;
       result.push(head);
       remaining = rest;
@@ -55,14 +49,12 @@ namespace Lexing {
 
   export const lex = (input: string): any => {
     const result = lexShallow(input);
-    if (result === "ERROR") return result;
     for (const [index, token] of result.entries()) {
       if (token.type === "parenthetical") {
         const value = result[index].value;
         // @ts-ignore
         delete result[index].value;
         const tokens = lex(value);
-        if (tokens === "ERROR") return tokens;
         // @ts-ignore
         result[index].tokens = tokens;
       }
@@ -72,7 +64,9 @@ namespace Lexing {
   };
 }
 
-// TESTS
+// ===============================================
+// ==================== TESTS ====================
+// ===============================================
 
 type TestCase = {
   fn: (x: any) => any;
@@ -81,7 +75,14 @@ type TestCase = {
 };
 
 const test = ({ fn, input, expected }: TestCase) => {
-  const actual = fn(input);
+  let actual;
+
+  try {
+    actual = fn(input);
+  } catch (e) {
+    actual = e;
+  }
+
   const passed = deepequal(expected, actual);
   console.log(passed ? "✅" : "❌", "TEST");
   if (!passed) {

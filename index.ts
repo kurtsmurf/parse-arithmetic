@@ -2,17 +2,20 @@
 import deepequal from "https://cdn.skypack.dev/deepequal";
 
 namespace Lexing {
-  type TokenType = "reference" | "operator" | "number" | "parenthetical";
+  type TokenType = "reference" | "operator" | "number";
   type Token = { type: TokenType; value: string };
+  type Parenthetical = { type: "parenthetical"; value: string };
 
-  type MatchFn = (input: string) => Token;
-  type MunchFn = (input: string) => [Token, string];
-  type LexShallowFn = (input: string) => Token[];
+  type MatchFn = (input: string) => Token | Parenthetical;
+  type MunchFn = (input: string) => [Token | Parenthetical, string];
 
-  type LexResult = (Token | LexResult)[]
-  type LexFn = (input: string) => LexResult
+  type LexShallowResult = (Token | Parenthetical)[];
+  type LexShallowFn = (input: string) => LexShallowResult;
 
-  const matchers: [TokenType, RegExp][] = [
+  type LexResult = (Token | LexResult)[];
+  type LexFn = (input: string) => LexResult;
+
+  const matchers: [TokenType | "parenthetical", RegExp][] = [
     ["reference", /^([A-Z])\1*[1-9][0-9]*/],
     ["number", /^\d+/],
     ["operator", /^[+\-*/]/],
@@ -50,20 +53,8 @@ namespace Lexing {
     return result;
   };
 
-  export const lex: LexFn = (input: string): any => {
-    const result: LexResult = lexShallow(input);
-    
-    for (const [index, item] of result.entries()) {
-      if (Array.isArray(item)) {
-        continue;
-      }
-      else if (item.type === "parenthetical") {
-        result[index] = lex(item.value)
-      }
-    }
-
-    return result;
-  };
+  export const lex: LexFn = (input: string) =>
+    lexShallow(input).map((x) => x.type === "parenthetical" ? lex(x.value) : x);
 }
 
 // ===============================================
@@ -144,14 +135,11 @@ const testCases: TestCase[] = [
     expected: [
       { type: "reference", value: "AA12" },
       { type: "operator", value: "*" },
-      {
-        type: "parenthetical",
-        tokens: [
-          { type: "number", value: "1" },
-          { type: "operator", value: "+" },
-          { type: "number", value: "2" },
-        ],
-      },
+      [
+        { type: "number", value: "1" },
+        { type: "operator", value: "+" },
+        { type: "number", value: "2" },
+      ],
       { type: "operator", value: "-" },
       { type: "number", value: "123" },
       { type: "operator", value: "/" },
@@ -164,21 +152,15 @@ const testCases: TestCase[] = [
     expected: [
       { type: "number", value: "1" },
       { type: "operator", value: "+" },
-      {
-        type: "parenthetical",
-        tokens: [
+      [
+        { type: "number", value: "1" },
+        { type: "operator", value: "+" },
+        [
           { type: "number", value: "1" },
           { type: "operator", value: "+" },
-          {
-            type: "parenthetical",
-            tokens: [
-              { type: "number", value: "1" },
-              { type: "operator", value: "+" },
-              { type: "number", value: "1" },
-            ],
-          },
+          { type: "number", value: "1" },
         ],
-      },
+      ],
     ],
     fn: Lexing.lex,
   },

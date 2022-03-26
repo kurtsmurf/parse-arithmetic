@@ -1,7 +1,7 @@
 // @ts-ignore
 import deepequal from "https://cdn.skypack.dev/deepequal";
 
-namespace Lexing {
+export namespace Lexing {
   type TokenType = "reference" | "operator" | "number";
   type Token = { type: TokenType; value: string };
   type Parenthetical = { type: "parenthetical"; value: string };
@@ -16,7 +16,7 @@ namespace Lexing {
   type LexFn = (input: string) => LexResult;
 
   const matchers: [TokenType | "parenthetical", RegExp][] = [
-    ["reference", /^([A-Z])\1*[1-9][0-9]*/],
+    ["reference", /^[A-Z]+[1-9][0-9]*/],
     ["number", /^\d+/],
     ["operator", /^[+\-*/]/],
     ["parenthetical", /^\(.*\)/],

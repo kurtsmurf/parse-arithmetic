@@ -7,7 +7,10 @@ namespace Lexing {
 
   type MatchFn = (input: string) => Token;
   type MunchFn = (input: string) => [Token, string];
-  type LexFn = (input: string) => Token[];
+  type LexShallowFn = (input: string) => Token[];
+
+  type LexResult = (Token | LexResult)[]
+  type LexFn = (input: string) => LexResult
 
   const matchers: [TokenType, RegExp][] = [
     ["reference", /^([A-Z])\1*[1-9][0-9]*/],
@@ -35,7 +38,7 @@ namespace Lexing {
     return [token, rest];
   };
 
-  const lexShallow: LexFn = (input) => {
+  const lexShallow: LexShallowFn = (input) => {
     let remaining = input;
     let result = [];
     while (remaining.length > 0) {
@@ -47,16 +50,15 @@ namespace Lexing {
     return result;
   };
 
-  export const lex = (input: string): any => {
-    const result = lexShallow(input);
-    for (const [index, token] of result.entries()) {
-      if (token.type === "parenthetical") {
-        const value = result[index].value;
-        // @ts-ignore
-        delete result[index].value;
-        const tokens = lex(value);
-        // @ts-ignore
-        result[index].tokens = tokens;
+  export const lex: LexFn = (input: string): any => {
+    const result: LexResult = lexShallow(input);
+    
+    for (const [index, item] of result.entries()) {
+      if (Array.isArray(item)) {
+        continue;
+      }
+      else if (item.type === "parenthetical") {
+        result[index] = lex(item.value)
       }
     }
 

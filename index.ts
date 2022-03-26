@@ -62,16 +62,31 @@ export namespace Lexing {
 // ===============================================
 
 type TestCase = {
-  fn: (x: any) => any;
   input: any;
   expected: any;
 };
 
-const test = ({ fn, input, expected }: TestCase) => {
+const test = ({ input, expected }: TestCase) => {
   let actual;
-
+  
+  // FIXME: You shouldn't have to wrap lex in a try/catch
+  // I want to get error info back from lex in case of error
+  // without having to try/catch
+  // e.g.
+  // let lex = string => Graph | Error
+  // where Graph = (Token | Graph)[]
+  // and Error = ...some info about the error
+  // like "where" (index) and "why" ("unexpected token")
+  // e.g.
+  // err: Error = { reason: "unexpected token", index: 5, input: "1 + 7!" }
+  // ...or something :(
+  // That way we it's in the type system that it can throw
+  // the caller will be reminded to deal with that case
+  // and it will be nicerr for them
+  // then try/catching barf (everybody knows trycatching is gross)
+  // 
   try {
-    actual = fn(input);
+    actual = Lexing.lex(input);
   } catch (e) {
     actual = e;
   }
@@ -89,32 +104,26 @@ const testCases: TestCase[] = [
   {
     input: "A1",
     expected: [{ type: "reference", value: "A1" }],
-    fn: Lexing.lex,
   },
   {
     input: "+",
     expected: [{ type: "operator", value: "+" }],
-    fn: Lexing.lex,
   },
   {
     input: "1",
     expected: [{ type: "number", value: "1" }],
-    fn: Lexing.lex,
   },
   {
     input: "  1234!#$*",
     expected: "ERROR",
-    fn: Lexing.lex,
   },
   {
     input: "A01",
     expected: "ERROR",
-    fn: Lexing.lex,
   },
   {
     input: "AB",
     expected: "ERROR",
-    fn: Lexing.lex,
   },
   {
     input: "A1 + 17",
@@ -123,12 +132,10 @@ const testCases: TestCase[] = [
       { type: "operator", value: "+" },
       { type: "number", value: "17" },
     ],
-    fn: Lexing.lex,
   },
   {
     input: "A1 + !",
     expected: "ERROR",
-    fn: Lexing.lex,
   },
   {
     input: "AA12 * (1 + 2) - 123 / B7",
@@ -145,7 +152,6 @@ const testCases: TestCase[] = [
       { type: "operator", value: "/" },
       { type: "reference", value: "B7" },
     ],
-    fn: Lexing.lex,
   },
   {
     input: "1 + (1 + (1 + 1))",
@@ -162,12 +168,10 @@ const testCases: TestCase[] = [
         ],
       ],
     ],
-    fn: Lexing.lex,
   },
   {
     input: "1 + (!@#$)",
     expected: "ERROR",
-    fn: Lexing.lex,
   },
   {
     input: "-1",
@@ -175,7 +179,6 @@ const testCases: TestCase[] = [
       { type: "operator", value: "-" },
       { type: "number", value: "1" },
     ],
-    fn: Lexing.lex,
   },
   {
     input: "1 - - 1",
@@ -185,7 +188,6 @@ const testCases: TestCase[] = [
       { type: "operator", value: "-" },
       { type: "number", value: "1" },
     ],
-    fn: Lexing.lex,
   },
 ];
 

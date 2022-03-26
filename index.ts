@@ -30,10 +30,14 @@ namespace Lexing {
 
   const munch: MunchFn = (input) => {
     const trimmed = input.trim();
-    const head = match(trimmed);
-    if (head === "ERROR") return head;
-    const rest = trimmed.slice(head.value.length);
-    return [head, rest];
+    const matchResult = match(trimmed);
+    if (matchResult === "ERROR") return matchResult;
+    const rest = trimmed.slice(matchResult.value.length);
+    const token = matchResult.type === "parenthetical"
+      // remove parens from value
+      ? { ...matchResult, value: matchResult.value.slice(1, -1) }
+      : matchResult;
+    return [token, rest];
   };
 
   const lexShallow: LexFn = (input) => {
@@ -54,8 +58,7 @@ namespace Lexing {
     if (result === "ERROR") return result;
     for (const [index, token] of result.entries()) {
       if (token.type === "parenthetical") {
-        let value = result[index].value;
-        value = value.slice(1, value.length - 1);
+        const value = result[index].value;
         // @ts-ignore
         delete result[index].value;
         const tokens = lex(value);
@@ -64,11 +67,10 @@ namespace Lexing {
         result[index].tokens = tokens;
       }
     }
-  
+
     return result;
   };
 }
-
 
 // TESTS
 
